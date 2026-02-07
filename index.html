@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDG Club Game - Discover Your MBTI & Career Path</title>
+    
+    <!-- SEO & Social Sharing -->
+    <meta name="description" content="An interactive game that predicts your MBTI personality type, skills, interests, and career advice based on your SDG club choices. Powered by AI.">
+    <meta name="keywords" content="MBTI, SDG, personality test, career advice, sustainable development, club game">
+    <meta name="author" content="SDG Club Game">
+    
+    <!-- Open Graph (Facebook, LinkedIn) -->
+    <meta property="og:title" content="SDG Club Game - Discover Your MBTI & Career Path">
+    <meta property="og:description" content="Choose your favorite SDG club, answer fun questions, and discover your MBTI type, skills, interests and personalized career advice!">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://em-content.zobj.net/source/apple/391/fox_1f98a.png">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="SDG Club Game - Discover Your MBTI & Career Path">
+    <meta name="twitter:description" content="Choose your favorite SDG club and discover your MBTI type, skills, interests and career advice!">
+    
+    <!-- Favicon (emoji-based) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦊</text></svg>">
+    
+    <!-- Preconnect for API performance -->
+    <link rel="preconnect" href="https://generativelanguage.googleapis.com">
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen active">
+            <div class="start-content">
+                <div class="character-welcome">
+                    <div class="welcome-character">🦊</div>
+                </div>
+                <h1>🎮 SDG Club Game</h1>
+                <p class="subtitle">Discover your MBTI personality type through club activities</p>
+                <button id="start-btn" class="btn btn-primary">Start Game</button>
+            </div>
+        </div>
+
+        <!-- Club Selection Screen -->
+        <div id="club-selection-screen" class="screen">
+            <div class="screen-header">
+                <div class="header-character">🐰</div>
+                <h2>Choose Your Club</h2>
+                <p>Select an SDG club that interests you to begin your journey</p>
+            </div>
+            <div id="club-grid" class="club-grid">
+                <!-- Club cards will be generated dynamically -->
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div class="game-header">
+                <div class="club-info">
+                    <h2 id="current-club-name"></h2>
+                    <p id="current-club-slogan"></p>
+                </div>
+                <div class="progress-info">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar">
+                            <div id="progress-fill" class="progress-fill"></div>
+                        </div>
+                        <span id="progress-text">Level 0/10</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="level-container" class="level-container">
+                <div class="level-character">🐺</div>
+                <!-- Level content will be loaded dynamically -->
+            </div>
+
+            <div class="game-actions">
+                <button id="next-level-btn" class="btn btn-primary" style="display: none;">Next Level</button>
+                <button id="finish-game-btn" class="btn btn-success" style="display: none;">Finish Game</button>
+            </div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="screen">
+            <div class="result-content">
+                <div class="celebration-characters">
+                    <div class="celeb-char char-1">🦊</div>
+                    <div class="celeb-char char-2">🐰</div>
+                    <div class="celeb-char char-3">🐺</div>
+                    <div class="celeb-char char-4">🐻</div>
+                </div>
+                <h2>🎉 Congratulations! You've completed all levels!</h2>
+                <div id="mbti-result" class="mbti-result">
+                    <div class="loading">Analyzing your MBTI type...</div>
+                </div>
+                <div class="result-actions">
+                    <button id="restart-btn" class="btn btn-primary">Play Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
