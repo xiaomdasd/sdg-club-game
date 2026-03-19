@@ -82,7 +82,40 @@ body {
 .subtitle {
     font-size: 1.2em;
     color: #666;
-    margin-bottom: 40px;
+    margin-bottom: 24px;
+}
+
+/* Language Selector */
+.lang-selector {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 28px;
+}
+
+.lang-btn {
+    padding: 10px 22px;
+    font-size: 1em;
+    border: 2px solid #d1d5db;
+    border-radius: 12px;
+    background: #f9fafb;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 600;
+    color: #555;
+}
+
+.lang-btn:hover {
+    border-color: #667eea;
+    background: #eef2ff;
+    color: #4c51bf;
+}
+
+.lang-btn.active {
+    border-color: #667eea;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
 }
 
 /* 按钮样式 */
@@ -399,11 +432,13 @@ body {
     font-weight: 700;
     font-size: 1.2em;
     color: #4c51bf;
+    white-space: nowrap;
 }
 
 .npc-role {
     font-size: 0.9em;
     color: #718096;
+    white-space: nowrap;
 }
 
 .npc-bubble {
