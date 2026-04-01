@@ -23,6 +23,12 @@ python -m http.server 8000
 # Then open http://localhost:8000 in your browser
 ```
 
+## 🔗 Current Project URL
+
+The live project is currently available at:
+
+`https://xiaomdasd.github.io/sdg-club-game/?v=df333a9`
+
 ## 🌐 Deploy to Public (Free Options)
 
 ### Option A: GitHub Pages
