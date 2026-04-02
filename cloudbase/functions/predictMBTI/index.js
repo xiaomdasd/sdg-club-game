@@ -7,6 +7,7 @@ const app = cloudbase.init({
 });
 
 const db = app.database();
+const RESULT_COLLECTION = process.env.RESULT_COLLECTION || 'game_results';
 
 function buildFallbackText(event = {}) {
     const selectedClub = event.selectedClub || {};
@@ -92,11 +93,25 @@ exports.main = async (event = {}) => {
 
     let saveResult = null;
     try {
-        saveResult = await db.collection(process.env.RESULT_COLLECTION || 'game_results').add(record);
+        saveResult = await db.collection(RESULT_COLLECTION).add(record);
     } catch (error) {
-        saveResult = {
-            error: error.message
-        };
+        const message = error && error.message ? error.message : String(error);
+        const missingCollection = message.includes('Db or Table not exist');
+
+        if (missingCollection) {
+            try {
+                await db.createCollection(RESULT_COLLECTION);
+                saveResult = await db.collection(RESULT_COLLECTION).add(record);
+            } catch (createError) {
+                saveResult = {
+                    error: createError.message
+                };
+            }
+        } else {
+            saveResult = {
+                error: message
+            };
+        }
     }
 
     return {
