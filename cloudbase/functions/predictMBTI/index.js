@@ -22,11 +22,11 @@ function buildFallbackText(event = {}) {
 }
 
 exports.main = async (event = {}) => {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
         return {
             ok: false,
-            error: 'Missing GEMINI_API_KEY in CloudBase function environment variables.'
+            error: 'Missing DEEPSEEK_API_KEY in CloudBase function environment variables.'
         };
     }
 
@@ -38,27 +38,41 @@ exports.main = async (event = {}) => {
         };
     }
 
-    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const model = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+    const url = 'https://api.deepseek.com/chat/completions';
 
     let mbtiText = '';
-    let requestSource = 'gemini';
+    let requestSource = 'deepseek';
 
     try {
         const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
+                model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are an MBTI analysis assistant. Follow the requested language and section headings exactly.'
+                    },
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                stream: false
             })
         });
 
         if (!response.ok) {
-            throw new Error(`Gemini request failed with ${response.status}: ${await response.text()}`);
+            throw new Error(`DeepSeek request failed with ${response.status}: ${await response.text()}`);
         }
 
         const data = await response.json();
-        mbtiText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        mbtiText = data?.choices?.[0]?.message?.content || '';
     } catch (error) {
         requestSource = 'fallback';
         mbtiText = buildFallbackText(event);

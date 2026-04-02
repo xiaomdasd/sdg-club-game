@@ -58,8 +58,8 @@ Deploy the files under `cloudbase/functions/predictMBTI/` as a CloudBase functio
 
 Set these environment variables for the function:
 
-- `GEMINI_API_KEY`
-- `GEMINI_MODEL` (optional, default: `gemini-2.0-flash`)
+- `DEEPSEEK_API_KEY`
+- `DEEPSEEK_MODEL` (optional, default: `deepseek-chat`)
 - `RESULT_COLLECTION` (optional, default: `game_results`)
 
 ### 3. Database

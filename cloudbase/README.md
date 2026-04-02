@@ -13,8 +13,8 @@ This project keeps the static frontend on GitHub Pages and uses Tencent CloudBas
 
 Set these in the CloudBase console before deploying the function:
 
-- `GEMINI_API_KEY`: your Gemini API key
-- `GEMINI_MODEL`: optional, defaults to `gemini-2.0-flash`
+- `DEEPSEEK_API_KEY`: your DeepSeek API key
+- `DEEPSEEK_MODEL`: optional, defaults to `deepseek-chat`
 - `RESULT_COLLECTION`: optional, defaults to `game_results`
 
 ## Frontend config
@@ -24,5 +24,5 @@ Copy `cloudbase-config.example.js` to `cloudbase-config.js` and fill in your env
 ## Notes
 
 - GitHub Pages only hosts the static files.
-- The Gemini API key is no longer meant to live in browser code.
+- The DeepSeek API key is no longer meant to live in browser code.
 - If CloudBase is not configured yet, the app falls back to local MBTI output.
