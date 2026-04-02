@@ -1,10 +1,7 @@
 // CloudBase 配置
 const CLOUD_BASE_DEFAULTS = {
     enabled: false,
-    env: '',
-    region: 'ap-shanghai',
-    functionName: 'predictMBTI',
-    collectionName: 'game_results'
+    apiUrl: ''
 };
 
 const cloudBaseConfig = {
@@ -12,111 +9,32 @@ const cloudBaseConfig = {
     ...(window.CLOUDBASE_CONFIG || {})
 };
 
-let cloudBaseApp = null;
-let cloudBaseReady = false;
-let cloudBaseInitPromise = null;
-let cloudBaseStatus = {
-    init: 'idle',
-    source: 'unknown',
-    message: ''
-};
-
-function setCloudBaseStatus(patch) {
-    cloudBaseStatus = {
-        ...cloudBaseStatus,
-        ...patch
-    };
-}
-
-async function ensureCloudBaseReady() {
-    if (cloudBaseReady) return true;
-    if (!cloudBaseConfig.enabled || !cloudBaseConfig.env || typeof window.cloudbase === 'undefined') {
-        setCloudBaseStatus({
-            init: 'disabled',
-            message: 'CloudBase config missing or SDK not loaded.'
-        });
-        return false;
-    }
-    if (!cloudBaseInitPromise) {
-        setCloudBaseStatus({
-            init: 'connecting',
-            message: 'Connecting to CloudBase...'
-        });
-        cloudBaseInitPromise = (async () => {
-            cloudBaseApp = window.cloudbase.init({
-                env: cloudBaseConfig.env,
-                region: cloudBaseConfig.region
-            });
-
-            if (cloudBaseApp.auth && typeof cloudBaseApp.auth === 'function') {
-                const auth = cloudBaseApp.auth({ persistence: 'local' });
-                if (auth && typeof auth.signInAnonymously === 'function') {
-                    try {
-                        await auth.signInAnonymously();
-                    } catch (error) {
-                        console.warn('CloudBase anonymous sign-in skipped:', error.message);
-                        setCloudBaseStatus({
-                            init: 'auth-warning',
-                            message: `Anonymous sign-in warning: ${error.message}`
-                        });
-                    }
-                }
-            }
-
-            cloudBaseReady = true;
-            setCloudBaseStatus({
-                init: 'ready',
-                message: `CloudBase connected: ${cloudBaseConfig.env}`
-            });
-            return true;
-        })().catch(error => {
-            console.warn('CloudBase init failed:', error.message);
-            cloudBaseReady = false;
-            setCloudBaseStatus({
-                init: 'failed',
-                message: `CloudBase init failed: ${error.message}`
-            });
-            return false;
-        });
-    }
-
-    return cloudBaseInitPromise;
-}
-
 async function requestMbtiFromCloudBase(prompt) {
-    const isReady = await ensureCloudBaseReady();
-    if (!isReady || !cloudBaseApp || typeof cloudBaseApp.callFunction !== 'function') {
-        setCloudBaseStatus({
-            source: 'local-fallback',
-            message: cloudBaseStatus.message || 'CloudBase function is unavailable.'
-        });
+    if (!cloudBaseConfig.enabled || !cloudBaseConfig.apiUrl) {
         return null;
     }
 
     try {
-        const result = await cloudBaseApp.callFunction({
-            name: cloudBaseConfig.functionName,
-            data: {
+        const response = await fetch(cloudBaseConfig.apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
                 prompt,
                 selectedClub: gameState.selectedClub,
                 answers: buildAnswerPayload(),
                 lang: currentLang
-            }
+            })
         });
 
-        const finalResult = result?.result || null;
-        setCloudBaseStatus({
-            source: finalResult?.source || 'cloud-function',
-            message: finalResult?.saveResult?.id
-                ? `CloudBase saved result: ${finalResult.saveResult.id}`
-                : (finalResult?.error || 'CloudBase function returned a result.')
-        });
-        return finalResult;
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        return await response.json();
     } catch (error) {
-        setCloudBaseStatus({
-            source: 'local-fallback',
-            message: `CloudBase call failed: ${error.message}`
-        });
+        console.error('CloudBase HTTP Error:', error);
         throw error;
     }
 }
@@ -133,21 +51,6 @@ function buildAnswerPayload() {
             choiceText: choice ? choice.text : ''
         };
     });
-}
-
-function buildDebugStatusHtml() {
-    const items = [
-        `Init: ${cloudBaseStatus.init}`,
-        `Source: ${cloudBaseStatus.source}`,
-        `Message: ${cloudBaseStatus.message || 'None'}`
-    ];
-
-    return `
-        <div class="debug-status">
-            <h4>CloudBase Debug</h4>
-            ${items.map(item => `<p>${item}</p>`).join('')}
-        </div>
-    `;
 }
 
 // ===================== 多语言系统 =====================
@@ -571,7 +474,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeGame() {
-    ensureCloudBaseReady();
     showScreen('start-screen');
 
     const welcomeChar = document.querySelector('.welcome-character');
@@ -871,7 +773,6 @@ async function predictMBTI() {
         const mbtiMatch = mbtiText.match(/\b([EI][NS][FT][PJ])\b/);
         const predictedMBTI = cloudBaseResult.predictedMBTI || (mbtiMatch ? mbtiMatch[1] : gameState.selectedClub.mbti);
         const careerHtml = buildCareerListHtml(predictedMBTI);
-        const debugHtml = buildDebugStatusHtml();
 
         resultDiv.innerHTML = `
             <div class="mbti-card">${predictedMBTI}</div>
@@ -879,7 +780,6 @@ async function predictMBTI() {
                 <h3>${t('resultTitle')}: ${predictedMBTI}</h3>
                 <p>${mbtiText}</p>
                 ${careerHtml}
-                ${debugHtml}
                 <p style="margin-top: 20px; font-style: italic; color: #888;">
                     ${t('typicalType')} "${gameState.selectedClub.name}" ${t('youChoseIs')}: ${gameState.selectedClub.mbti}
                 </p>
@@ -890,7 +790,6 @@ async function predictMBTI() {
         console.error('Error details:', error.message);
         const fallbackMBTI = gameState.selectedClub.mbti;
         const careerHtml = buildCareerListHtml(fallbackMBTI);
-        const debugHtml = buildDebugStatusHtml();
         resultDiv.innerHTML = `
             <div class="mbti-card">${fallbackMBTI}</div>
             <div class="mbti-description">
@@ -904,7 +803,6 @@ async function predictMBTI() {
                 <p>"${gameState.selectedClub.activity}" ${t('interestsFallback')} ${fallbackMBTI} ${t('interestsFallback2')}</p>
 
                 ${careerHtml}
-                ${debugHtml}
                 <p style="margin-top: 20px;">${t('typicalMatch')} ${fallbackMBTI}。</p>
             </div>
         `;
@@ -948,16 +846,13 @@ The person's choices in 10 levels:
         }
     });
 
-    prompt += `\nThen, based on this MBTI type, the SDG club context above and the behavioral tendencies reflected in these choices, please respond in FOUR clearly separated sections:
-1. MBTI: Clearly state the MBTI type as four letters (e.g. ENFP) and give a brief summary.
-2. Skills: Summarize this person's likely strengths and core skills (3-6 bullet points).
-3. Interests: Describe this person's likely interests, motivations and preferred working/learning environments (3-6 bullet points).
-4. Career Advice: Recommend 5-8 specific, concrete future career paths or job roles that would be suitable for this person. These roles MUST simultaneously fit:
-   - this person's MBTI type, AND
-   - the SDG theme and club activity context given above (e.g. related industries, organizations or job families).
-   For each role, follow this structure: "Job title - typical organization/industry - 1-2 sentences on why this matches both the MBTI and the chosen SDG club". Use very concrete titles (for example "Sustainability Analyst at a renewable energy company" instead of vague phrases like "work in sustainability").
+    prompt += `\nThen respond briefly in THREE clearly separated sections only:
+1. MBTI: State the four-letter MBTI type and one short summary sentence.
+2. Skills: Give 3-5 short bullet points about likely strengths and core skills.
+3. Interests: Give 3-5 short bullet points about likely interests, motivations and preferred environments.
 
-Use clear headings like "MBTI", "Skills", "Interests" and "Career Advice" so it is easy to read.
+Keep the answer concise and useful. Do not add a Career Advice section because the frontend will show career suggestions separately.
+Use clear headings exactly: "MBTI", "Skills", and "Interests".
 
 ${langInstruction}`;
 

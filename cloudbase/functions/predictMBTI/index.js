@@ -8,6 +8,45 @@ const app = cloudbase.init({
 
 const db = app.database();
 const RESULT_COLLECTION = process.env.RESULT_COLLECTION || 'game_results';
+const HTTP_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Content-Type': 'application/json; charset=utf-8'
+};
+
+function normalizeEvent(event = {}) {
+    if (event && typeof event === 'object' && typeof event.prompt === 'string') {
+        return event;
+    }
+
+    if (typeof event.body === 'string') {
+        try {
+            const parsed = JSON.parse(event.body);
+            return typeof parsed === 'object' && parsed ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    if (event.body && typeof event.body === 'object') {
+        return event.body;
+    }
+
+    return {};
+}
+
+function isHttpEvent(event = {}) {
+    return Boolean(event && typeof event === 'object' && event.httpMethod);
+}
+
+function buildHttpResponse(statusCode, payload) {
+    return {
+        statusCode,
+        headers: HTTP_HEADERS,
+        body: JSON.stringify(payload)
+    };
+}
 
 function buildFallbackText(event = {}) {
     const selectedClub = event.selectedClub || {};
@@ -23,20 +62,33 @@ function buildFallbackText(event = {}) {
 }
 
 exports.main = async (event = {}) => {
+    if (event.httpMethod === 'OPTIONS') {
+        return buildHttpResponse(200, { ok: true });
+    }
+
+    const payload = normalizeEvent(event);
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
-        return {
+        const response = {
             ok: false,
             error: 'Missing DEEPSEEK_API_KEY in CloudBase function environment variables.'
         };
+        return isHttpEvent(event) ? buildHttpResponse(500, response) : response;
     }
 
-    const prompt = typeof event.prompt === 'string' ? event.prompt.trim() : '';
+    const prompt = typeof payload.prompt === 'string' ? payload.prompt.trim() : '';
     if (!prompt) {
-        return {
+        const response = {
             ok: false,
-            error: 'Missing prompt.'
+            error: 'Missing prompt.',
+            debug: {
+                eventKeys: Object.keys(event || {}),
+                bodyType: typeof event.body,
+                bodyPreview: typeof event.body === 'string' ? event.body.slice(0, 300) : event.body,
+                payloadKeys: Object.keys(payload || {})
+            }
         };
+        return isHttpEvent(event) ? buildHttpResponse(400, response) : response;
     }
 
     const model = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
@@ -46,14 +98,19 @@ exports.main = async (event = {}) => {
     let requestSource = 'deepseek';
 
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
+            signal: controller.signal,
             body: JSON.stringify({
                 model,
+                max_tokens: 700,
+                temperature: 0.3,
                 messages: [
                     {
                         role: 'system',
@@ -67,6 +124,7 @@ exports.main = async (event = {}) => {
                 stream: false
             })
         });
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             throw new Error(`DeepSeek request failed with ${response.status}: ${await response.text()}`);
@@ -76,15 +134,15 @@ exports.main = async (event = {}) => {
         mbtiText = data?.choices?.[0]?.message?.content || '';
     } catch (error) {
         requestSource = 'fallback';
-        mbtiText = buildFallbackText(event);
+        mbtiText = buildFallbackText(payload);
     }
 
     const mbtiMatch = mbtiText.match(/\b([EI][NS][FT][PJ])\b/);
 
     const record = {
-        selectedClub: event.selectedClub || null,
-        answers: Array.isArray(event.answers) ? event.answers : [],
-        lang: event.lang || 'en',
+        selectedClub: payload.selectedClub || null,
+        answers: Array.isArray(payload.answers) ? payload.answers : [],
+        lang: payload.lang || 'en',
         mbti: mbtiMatch ? mbtiMatch[1] : null,
         mbtiText,
         source: requestSource,
@@ -114,11 +172,12 @@ exports.main = async (event = {}) => {
         }
     }
 
-    return {
+    const response = {
         ok: true,
         mbtiText,
         predictedMBTI: mbtiMatch ? mbtiMatch[1] : null,
         source: requestSource,
         saveResult
     };
+    return isHttpEvent(event) ? buildHttpResponse(200, response) : response;
 };

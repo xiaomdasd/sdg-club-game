@@ -6,7 +6,7 @@ An interactive web game that predicts your MBTI personality type, skills, intere
 
 - 🏫 **17 SDG Clubs** - Choose from clubs aligned with UN Sustainable Development Goals
 - 💬 **NPC Dialogue System** - Zootopia-themed characters guide you through the game
-- 🧠 **AI-Powered Prediction** - Uses Tencent CloudBase cloud functions to call Gemini securely
+- 🧠 **AI-Powered Prediction** - Uses Tencent CloudBase HTTP cloud functions to call DeepSeek securely
 - 📊 **Comprehensive Results** - Get your MBTI, Skills, Interests, and Career Advice
 - 📱 **Responsive Design** - Works on desktop and mobile devices
 - ☁️ **CloudBase Ready** - Supports anonymous login, server-side AI calls, and result storage
@@ -36,25 +36,22 @@ This project is designed to use:
 
 - `GitHub repo` for source control
 - `GitHub Pages` for the public static site
-- `Tencent CloudBase` for anonymous auth, cloud functions, and database storage
+- `Tencent CloudBase` for HTTP cloud functions and database storage
 
 ### 1. Frontend config
 
-Edit `cloudbase-config.js` and set your environment ID:
+Edit `cloudbase-config.js` and set your HTTP service URL:
 
 ```js
 window.CLOUDBASE_CONFIG = {
   enabled: true,
-  env: "your-env-id",
-  region: "ap-shanghai",
-  functionName: "predictMBTI",
-  collectionName: "game_results"
+  apiUrl: "https://your-env-id-xxxxx.ap-shanghai.app.tcloudbase.com/predict-mbti"
 };
 ```
 
 ### 2. Cloud function
 
-Deploy the files under `cloudbase/functions/predictMBTI/` as a CloudBase function named `predictMBTI`.
+Deploy the files under `cloudbase/functions/predictMBTI/` as a CloudBase function named `predictMBTI`, then expose it through CloudBase HTTP access service at `/predict-mbti`.
 
 Set these environment variables for the function:
 
@@ -66,15 +63,11 @@ Set these environment variables for the function:
 
 Create a collection called `game_results` in CloudBase.
 
-### 4. Authentication
-
-Enable anonymous login for Web in CloudBase so the browser can call the cloud function.
-
 ## 🌐 Deploy to Public
 
 ### Option A: GitHub Pages
 1. Create a GitHub repository
-2. Upload all files (`index.html`, `styles.css`, `script.js`)
+2. Upload all files (`index.html`, `styles.css`, `script.js`, `cloudbase-config.js`)
 3. Go to **Settings** → **Pages**
 4. Select **Source: Deploy from a branch** → **main** → **/ (root)**
 5. Your site will be live at `https://yourusername.github.io/repo-name`
@@ -93,7 +86,7 @@ Enable anonymous login for Web in CloudBase so the browser can call the cloud fu
 
 ## 🔐 API Key Security
 
-The Gemini API key should now live in the CloudBase function environment variables, not in browser code.
+The DeepSeek API key should now live in the CloudBase function environment variables, not in browser code.
 
 ## 📁 Project Structure
 
@@ -101,12 +94,12 @@ The Gemini API key should now live in the CloudBase function environment variabl
 demo/
 ├── index.html                 # Main HTML file
 ├── styles.css                 # All styles and animations
-├── script.js                  # Game logic and CloudBase client calls
-├── cloudbase-config.js        # Frontend CloudBase config
+├── script.js                  # Game logic and HTTP API calls
+├── cloudbase-config.js        # Frontend HTTP API config
 ├── cloudbase-config.example.js
 ├── cloudbase/
 │   └── functions/
-│       └── predictMBTI/       # CloudBase function that calls Gemini and stores results
+│       └── predictMBTI/       # CloudBase function that calls DeepSeek and stores results
 └── README.md                  # This file
 ```
 

@@ -641,28 +641,6 @@ body {
     margin-top: 40px;
 }
 
-.debug-status {
-    margin-top: 20px;
-    padding: 14px 16px;
-    border-radius: 12px;
-    background: #f3f6ff;
-    border: 1px solid #cfd8ff;
-    text-align: left;
-}
-
-.debug-status h4 {
-    margin-bottom: 8px;
-    color: #4c51bf;
-    font-size: 1rem;
-}
-
-.debug-status p {
-    margin: 6px 0;
-    color: #4b5563;
-    word-break: break-word;
-    font-size: 0.95rem;
-}
-
 /* Character Animations */
 @keyframes float {
     0%, 100% {
