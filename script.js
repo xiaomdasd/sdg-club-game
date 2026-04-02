@@ -15,13 +15,33 @@ const cloudBaseConfig = {
 let cloudBaseApp = null;
 let cloudBaseReady = false;
 let cloudBaseInitPromise = null;
+let cloudBaseStatus = {
+    init: 'idle',
+    source: 'unknown',
+    message: ''
+};
+
+function setCloudBaseStatus(patch) {
+    cloudBaseStatus = {
+        ...cloudBaseStatus,
+        ...patch
+    };
+}
 
 async function ensureCloudBaseReady() {
     if (cloudBaseReady) return true;
     if (!cloudBaseConfig.enabled || !cloudBaseConfig.env || typeof window.cloudbase === 'undefined') {
+        setCloudBaseStatus({
+            init: 'disabled',
+            message: 'CloudBase config missing or SDK not loaded.'
+        });
         return false;
     }
     if (!cloudBaseInitPromise) {
+        setCloudBaseStatus({
+            init: 'connecting',
+            message: 'Connecting to CloudBase...'
+        });
         cloudBaseInitPromise = (async () => {
             cloudBaseApp = window.cloudbase.init({
                 env: cloudBaseConfig.env,
@@ -35,15 +55,27 @@ async function ensureCloudBaseReady() {
                         await auth.signInAnonymously();
                     } catch (error) {
                         console.warn('CloudBase anonymous sign-in skipped:', error.message);
+                        setCloudBaseStatus({
+                            init: 'auth-warning',
+                            message: `Anonymous sign-in warning: ${error.message}`
+                        });
                     }
                 }
             }
 
             cloudBaseReady = true;
+            setCloudBaseStatus({
+                init: 'ready',
+                message: `CloudBase connected: ${cloudBaseConfig.env}`
+            });
             return true;
         })().catch(error => {
             console.warn('CloudBase init failed:', error.message);
             cloudBaseReady = false;
+            setCloudBaseStatus({
+                init: 'failed',
+                message: `CloudBase init failed: ${error.message}`
+            });
             return false;
         });
     }
@@ -54,20 +86,39 @@ async function ensureCloudBaseReady() {
 async function requestMbtiFromCloudBase(prompt) {
     const isReady = await ensureCloudBaseReady();
     if (!isReady || !cloudBaseApp || typeof cloudBaseApp.callFunction !== 'function') {
+        setCloudBaseStatus({
+            source: 'local-fallback',
+            message: cloudBaseStatus.message || 'CloudBase function is unavailable.'
+        });
         return null;
     }
 
-    const result = await cloudBaseApp.callFunction({
-        name: cloudBaseConfig.functionName,
-        data: {
-            prompt,
-            selectedClub: gameState.selectedClub,
-            answers: buildAnswerPayload(),
-            lang: currentLang
-        }
-    });
+    try {
+        const result = await cloudBaseApp.callFunction({
+            name: cloudBaseConfig.functionName,
+            data: {
+                prompt,
+                selectedClub: gameState.selectedClub,
+                answers: buildAnswerPayload(),
+                lang: currentLang
+            }
+        });
 
-    return result?.result || null;
+        const finalResult = result?.result || null;
+        setCloudBaseStatus({
+            source: finalResult?.source || 'cloud-function',
+            message: finalResult?.saveResult?.id
+                ? `CloudBase saved result: ${finalResult.saveResult.id}`
+                : (finalResult?.error || 'CloudBase function returned a result.')
+        });
+        return finalResult;
+    } catch (error) {
+        setCloudBaseStatus({
+            source: 'local-fallback',
+            message: `CloudBase call failed: ${error.message}`
+        });
+        throw error;
+    }
 }
 
 function buildAnswerPayload() {
@@ -82,6 +133,21 @@ function buildAnswerPayload() {
             choiceText: choice ? choice.text : ''
         };
     });
+}
+
+function buildDebugStatusHtml() {
+    const items = [
+        `Init: ${cloudBaseStatus.init}`,
+        `Source: ${cloudBaseStatus.source}`,
+        `Message: ${cloudBaseStatus.message || 'None'}`
+    ];
+
+    return `
+        <div class="debug-status">
+            <h4>CloudBase Debug</h4>
+            ${items.map(item => `<p>${item}</p>`).join('')}
+        </div>
+    `;
 }
 
 // ===================== 多语言系统 =====================
@@ -805,6 +871,7 @@ async function predictMBTI() {
         const mbtiMatch = mbtiText.match(/\b([EI][NS][FT][PJ])\b/);
         const predictedMBTI = cloudBaseResult.predictedMBTI || (mbtiMatch ? mbtiMatch[1] : gameState.selectedClub.mbti);
         const careerHtml = buildCareerListHtml(predictedMBTI);
+        const debugHtml = buildDebugStatusHtml();
 
         resultDiv.innerHTML = `
             <div class="mbti-card">${predictedMBTI}</div>
@@ -812,6 +879,7 @@ async function predictMBTI() {
                 <h3>${t('resultTitle')}: ${predictedMBTI}</h3>
                 <p>${mbtiText}</p>
                 ${careerHtml}
+                ${debugHtml}
                 <p style="margin-top: 20px; font-style: italic; color: #888;">
                     ${t('typicalType')} "${gameState.selectedClub.name}" ${t('youChoseIs')}: ${gameState.selectedClub.mbti}
                 </p>
@@ -822,6 +890,7 @@ async function predictMBTI() {
         console.error('Error details:', error.message);
         const fallbackMBTI = gameState.selectedClub.mbti;
         const careerHtml = buildCareerListHtml(fallbackMBTI);
+        const debugHtml = buildDebugStatusHtml();
         resultDiv.innerHTML = `
             <div class="mbti-card">${fallbackMBTI}</div>
             <div class="mbti-description">
@@ -835,6 +904,7 @@ async function predictMBTI() {
                 <p>"${gameState.selectedClub.activity}" ${t('interestsFallback')} ${fallbackMBTI} ${t('interestsFallback2')}</p>
 
                 ${careerHtml}
+                ${debugHtml}
                 <p style="margin-top: 20px;">${t('typicalMatch')} ${fallbackMBTI}。</p>
             </div>
         `;
