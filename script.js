@@ -1,6 +1,88 @@
-// Gemini API配置
-const GEMINI_API_KEY = 'AIzaSyCHcYxeBfvon-chg6VPmE5ILbKylfH49aM';
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+// CloudBase 配置
+const CLOUD_BASE_DEFAULTS = {
+    enabled: false,
+    env: '',
+    region: 'ap-shanghai',
+    functionName: 'predictMBTI',
+    collectionName: 'game_results'
+};
+
+const cloudBaseConfig = {
+    ...CLOUD_BASE_DEFAULTS,
+    ...(window.CLOUDBASE_CONFIG || {})
+};
+
+let cloudBaseApp = null;
+let cloudBaseReady = false;
+let cloudBaseInitPromise = null;
+
+async function ensureCloudBaseReady() {
+    if (cloudBaseReady) return true;
+    if (!cloudBaseConfig.enabled || !cloudBaseConfig.env || typeof window.cloudbase === 'undefined') {
+        return false;
+    }
+    if (!cloudBaseInitPromise) {
+        cloudBaseInitPromise = (async () => {
+            cloudBaseApp = window.cloudbase.init({
+                env: cloudBaseConfig.env,
+                region: cloudBaseConfig.region
+            });
+
+            if (cloudBaseApp.auth && typeof cloudBaseApp.auth === 'function') {
+                const auth = cloudBaseApp.auth({ persistence: 'local' });
+                if (auth && typeof auth.signInAnonymously === 'function') {
+                    try {
+                        await auth.signInAnonymously();
+                    } catch (error) {
+                        console.warn('CloudBase anonymous sign-in skipped:', error.message);
+                    }
+                }
+            }
+
+            cloudBaseReady = true;
+            return true;
+        })().catch(error => {
+            console.warn('CloudBase init failed:', error.message);
+            cloudBaseReady = false;
+            return false;
+        });
+    }
+
+    return cloudBaseInitPromise;
+}
+
+async function requestMbtiFromCloudBase(prompt) {
+    const isReady = await ensureCloudBaseReady();
+    if (!isReady || !cloudBaseApp || typeof cloudBaseApp.callFunction !== 'function') {
+        return null;
+    }
+
+    const result = await cloudBaseApp.callFunction({
+        name: cloudBaseConfig.functionName,
+        data: {
+            prompt,
+            selectedClub: gameState.selectedClub,
+            answers: buildAnswerPayload(),
+            lang: currentLang
+        }
+    });
+
+    return result?.result || null;
+}
+
+function buildAnswerPayload() {
+    return gameState.levels.map((level, idx) => {
+        const choiceIndex = gameState.choices[idx] || 0;
+        const choice = level.choices[choiceIndex];
+        return {
+            level: idx + 1,
+            title: level.title,
+            description: level.description,
+            choiceIndex,
+            choiceText: choice ? choice.text : ''
+        };
+    });
+}
 
 // ===================== 多语言系统 =====================
 let currentLang = 'en';
@@ -423,6 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeGame() {
+    ensureCloudBaseReady();
     showScreen('start-screen');
 
     const welcomeChar = document.querySelector('.welcome-character');
@@ -713,18 +796,14 @@ async function predictMBTI() {
 
     try {
         const prompt = buildMBTIPrompt();
-        const response = await fetch(GEMINI_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
+        const cloudBaseResult = await requestMbtiFromCloudBase(prompt);
+        if (!cloudBaseResult?.ok || !cloudBaseResult?.mbtiText) {
+            throw new Error(cloudBaseResult?.error || 'CloudBase function is not ready');
+        }
 
-        if (!response.ok) throw new Error(`API Error: ${response.status}`);
-
-        const data = await response.json();
-        const mbtiText = data.candidates[0].content.parts[0].text;
+        const mbtiText = cloudBaseResult.mbtiText;
         const mbtiMatch = mbtiText.match(/\b([EI][NS][FT][PJ])\b/);
-        const predictedMBTI = mbtiMatch ? mbtiMatch[1] : gameState.selectedClub.mbti;
+        const predictedMBTI = cloudBaseResult.predictedMBTI || (mbtiMatch ? mbtiMatch[1] : gameState.selectedClub.mbti);
         const careerHtml = buildCareerListHtml(predictedMBTI);
 
         resultDiv.innerHTML = `

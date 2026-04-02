@@ -1,14 +1,15 @@
 # 🎮 SDG Club Game - MBTI & Career Prediction
 
-An interactive web game that predicts your MBTI personality type, skills, interests, and career advice based on your SDG (Sustainable Development Goals) club choices. Featuring Zootopia-style NPC dialogues!
+An interactive web game that predicts your MBTI personality type, skills, interests, and career advice based on your SDG (Sustainable Development Goals) club choices. Featuring Zootopia-style NPC dialogues.
 
 ## ✨ Features
 
 - 🏫 **17 SDG Clubs** - Choose from clubs aligned with UN Sustainable Development Goals
 - 💬 **NPC Dialogue System** - Zootopia-themed characters guide you through the game
-- 🧠 **AI-Powered Prediction** - Uses Gemini API to analyze your choices
+- 🧠 **AI-Powered Prediction** - Uses Tencent CloudBase cloud functions to call Gemini securely
 - 📊 **Comprehensive Results** - Get your MBTI, Skills, Interests, and Career Advice
 - 📱 **Responsive Design** - Works on desktop and mobile devices
+- ☁️ **CloudBase Ready** - Supports anonymous login, server-side AI calls, and result storage
 
 ## 🚀 Quick Start (Local)
 
@@ -29,7 +30,47 @@ The live project is currently available at:
 
 `https://xiaomdasd.github.io/sdg-club-game/?v=df333a9`
 
-## 🌐 Deploy to Public (Free Options)
+## ☁️ Tencent CloudBase Setup
+
+This project is designed to use:
+
+- `GitHub repo` for source control
+- `GitHub Pages` for the public static site
+- `Tencent CloudBase` for anonymous auth, cloud functions, and database storage
+
+### 1. Frontend config
+
+Edit `cloudbase-config.js` and set your environment ID:
+
+```js
+window.CLOUDBASE_CONFIG = {
+  enabled: true,
+  env: "your-env-id",
+  region: "ap-shanghai",
+  functionName: "predictMBTI",
+  collectionName: "game_results"
+};
+```
+
+### 2. Cloud function
+
+Deploy the files under `cloudbase/functions/predictMBTI/` as a CloudBase function named `predictMBTI`.
+
+Set these environment variables for the function:
+
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL` (optional, default: `gemini-2.0-flash`)
+- `RESULT_COLLECTION` (optional, default: `game_results`)
+
+### 3. Database
+
+Create a collection called `game_results` in CloudBase.
+
+### 4. Authentication
+
+Enable anonymous login for Web in CloudBase so the browser can call the cloud function.
+
+## 🌐 Deploy to Public
 
 ### Option A: GitHub Pages
 1. Create a GitHub repository
@@ -50,28 +91,23 @@ The live project is currently available at:
 2. Drag and drop your project folder to the deploy area
 3. Your site will be live in seconds!
 
-## ⚠️ Important: API Key Security
+## 🔐 API Key Security
 
-The current code contains a Gemini API key in `script.js`. For public deployment:
-
-### Option 1: Keep it (for demo/educational use)
-- Set usage limits on your API key in Google Cloud Console
-- Monitor usage regularly
-
-### Option 2: Remove AI feature (safest)
-Replace the API call with static results by modifying `predictMBTI()` function.
-
-### Option 3: Use environment variables (advanced)
-For production, move the API key to a backend server.
+The Gemini API key should now live in the CloudBase function environment variables, not in browser code.
 
 ## 📁 Project Structure
 
 ```
 demo/
-├── index.html      # Main HTML file
-├── styles.css      # All styles and animations
-├── script.js       # Game logic and Gemini API integration
-└── README.md       # This file
+├── index.html                 # Main HTML file
+├── styles.css                 # All styles and animations
+├── script.js                  # Game logic and CloudBase client calls
+├── cloudbase-config.js        # Frontend CloudBase config
+├── cloudbase-config.example.js
+├── cloudbase/
+│   └── functions/
+│       └── predictMBTI/       # CloudBase function that calls Gemini and stores results
+└── README.md                  # This file
 ```
 
 ## 🎯 How to Play
