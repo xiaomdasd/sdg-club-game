@@ -7380,7 +7380,7 @@ const templates_zh = {
 };
 
 function formatChoiceText(choice) {
-    return choice.trait ? `${choice.text} (${choice.trait})` : choice.text;
+    return choice.text;
 }
 
 // ===================== 生成关卡 =====================
@@ -7796,14 +7796,16 @@ The person's choices in ${gameState.levels.length} levels:
     gameState.levels.forEach((level, idx) => {
         const choiceIndex = gameState.choices[idx] || 0;
         const choice = level.choices[choiceIndex];
+        const choiceTextForPrompt = choice.trait ? `${choice.text} (${choice.trait})` : choice.text;
         prompt += `\nLevel ${idx + 1}: ${level.title}\n`;
         prompt += `Question: ${level.description}\n`;
-        prompt += `Choice: ${choice.text}\n`;
+        prompt += `Choice: ${choiceTextForPrompt}\n`;
         // 附带英文版本帮助 API 理解
         if (levelsEn && levelsEn[idx]) {
             const enLevel = levelsEn[idx];
             const enChoice = enLevel.choices[choiceIndex];
-            prompt += `(English ref: ${enLevel.title} / ${enLevel.description} / ${enChoice.text})\n`;
+            const enChoiceTextForPrompt = enChoice.trait ? `${enChoice.text} (${enChoice.trait})` : enChoice.text;
+            prompt += `(English ref: ${enLevel.title} / ${enLevel.description} / ${enChoiceTextForPrompt})\n`;
         }
     });
 
